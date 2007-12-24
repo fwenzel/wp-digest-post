@@ -25,10 +25,14 @@ Author URI: http://fredericiana.com
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+// only switch this to on when developing.
+//define('DIGEST_POST_DEV', true);
+
 class Digest_Post {
     var $feed_uri;
     var $post_settings;
     var $preamble;
+    var $post_time;
     
     /**
      * PHP5 constructor
@@ -45,7 +49,12 @@ class Digest_Post {
          * Settings
          * @TODO Admin interface for this
          */
+        /***** SETTINGS, YOU MAY EDIT THIS *****/
         $this->feed_uri = 'http://fredericiana.com/feed';
+
+        /* time of day to post the digest, 24h format, like: "13:25" */
+        $this->post_time = "0:05";
+
         /*
           settings to be applied to all posts posted;
           some are commented out but kept for documentation purposes and
@@ -68,6 +77,7 @@ class Digest_Post {
             //'comment_count'	=> $post_nb_comment + $post_nb_trackback,
             //'post_category'     => array(1), // category array
         );
+        
         $this->preamble = ''; // text to be printed before the digest list, if any
         /***** END OF SETTINGS *****/
         
@@ -86,7 +96,11 @@ class Digest_Post {
      */
     function _install() {
         // schedule a daily event
-        wp_schedule_event( time(), 'often', 'digest_post_run');
+        $sched_time = explode(':', $this->post_time);
+        if (defined('DIGEST_POST_DEV'))
+            wp_schedule_event( mktime($sched_time[0], $sched_time[1]), 'often', 'digest_post_run');
+        else
+            wp_schedule_event( mktime($sched_time[0], $sched_time[1]), 'daily', 'digest_post_run');
         
         // add options to database
         add_option('digest_post_last_post', null, 'Timestamp of last posted digest');
@@ -164,9 +178,11 @@ class Digest_Post {
     }
 }
 
-// for development: run every few seconds
-add_filter('cron_schedules', 'cronjob_often');
-function cronjob_often() {return array('often' => array('interval' => 20, 'display' => 'Often'));}
+if (defined('DIGEST_POST_DEV')) {
+    // for development: run every few seconds
+    add_filter('cron_schedules', 'cronjob_often');
+    function cronjob_often() {return array('often' => array('interval' => 20, 'display' => 'Often'));}
+}
   
 
 /* instantiate our plugin object to let the magic happen */
